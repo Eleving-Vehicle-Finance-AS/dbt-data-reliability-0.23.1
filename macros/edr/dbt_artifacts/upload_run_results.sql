@@ -69,7 +69,7 @@
         "invocation_id": invocation_id,
         "unique_id": node.get("unique_id"),
         "name": node.get("name"),
-        "message": run_result_dict.get("message"),
+        "message": truncate_text(run_result_dict.get("message"), 1000),
         "generated_at": elementary.datetime_now_utc_as_string(),
         "rows_affected": elementary.normalize_rows_affected(
             raw_rows_affected
@@ -82,16 +82,16 @@
         "compile_started_at": none,
         "compile_completed_at": none,
         "full_refresh": flags.FULL_REFRESH,
-        "compiled_code": elementary.get_compiled_code(
+        "compiled_code": truncate_text(elementary.get_compiled_code(
             node, as_column_value=true
-        ),
+        ), 1000),
         "failures": run_result_dict.get("failures"),
         "query_id": run_result_dict.get("adapter_response", {}).get(
             "query_id"
         ),
         "thread_id": run_result_dict.get("thread_id"),
         "materialization": config_dict.get("materialized"),
-        "adapter_response": run_result_dict.get("adapter_response", {}),
+        'adapter_response': truncate_text_in_json(run_result_dict.get('adapter_response', {}), '_message', 1000),
         "group_name": config_dict.get("group"),
     } %}
 
@@ -120,16 +120,21 @@
     {{ return(flatten_run_result_dict) }}
 {% endmacro %}
 
-{% macro on_run_result_query_exceed(flattened_node) %}
-    {% do flattened_node.update(
-        {"compiled_code": elementary.get_compiled_code_too_long_err_msg()}
-    ) %}
-    {#- On adapters with limited string-literal / varchar sizes (e.g. Vertica
-        65 000 bytes) the error *message* can also embed the full compiled SQL,
-        making the INSERT statement exceed the adapter's limits.  Truncate the
-        message so the row can still be persisted. -#}
-    {% set msg = flattened_node.get("message", "") %}
-    {% if msg is string and msg | length > 4096 %}
-        {% do flattened_node.update({"message": msg[:4096] ~ "... (truncated)"}) %}
-    {% endif %}
+{# Custom macro to truncate json text not to exceed VERTICA column max length #}
+{% macro truncate_text_in_json(input_json, key, characters) -%}
+    {% set truncated_text = truncate_text(input_json.get(key), characters) -%}
+    {% do input_json.update({key: truncated_text}) -%}
+    {{- input_json -}}
+{% endmacro %}
+
+{# Custom macro to truncate text not to exceed VERTICA column max length #}
+{% macro truncate_text(input_text, characters) -%}
+    {% set truncation_suffix = '... (truncated)' -%}
+    {% if not input_text or input_text|length <= characters -%}
+        {{- input_text -}}
+    {% elif characters <= truncation_suffix|length -%}
+        {{- truncation_suffix[:characters] -}}
+    {% else -%}
+        {{- input_text[: characters - truncation_suffix|length] ~ truncation_suffix -}}
+    {% endif -%}
 {% endmacro %}

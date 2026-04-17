@@ -10,7 +10,7 @@
     ) %}
     {% set job_run_id = elementary.get_var(
         "job_run_id",
-        ["JOB_RUN_ID", "DBT_JOB_RUN_ID", "DBT_CLOUD_RUN_ID", "GITHUB_RUN_ID"],
+        ["JOB_RUN_ID", "DBT_JOB_RUN_ID", "DBT_CLOUD_RUN_ID", "GITHUB_RUN_ID", "BUILD_ID"],
     ) %}
     {% set dbt_invocation = {
         "invocation_id": invocation_id,
@@ -49,7 +49,7 @@
             ]
         ),
         "cause": elementary.get_first_env_var(
-            ["DBT_CAUSE", "DBT_CLOUD_RUN_REASON"]
+            ["DBT_CAUSE", "DBT_CLOUD_RUN_REASON", "BUILD_CAUSE"]
         ),
         "pull_request_id": elementary.get_first_env_var(
             ["DBT_PULL_REQUEST_ID", "DBT_CLOUD_PR_ID", "GITHUB_HEAD_REF"]
@@ -58,7 +58,7 @@
             ["DBT_GIT_SHA", "DBT_CLOUD_GIT_SHA", "GITHUB_SHA"]
         ),
         "orchestrator": orchestrator,
-        "dbt_user": elementary.get_first_env_var(["DBT_USER"]),
+        "dbt_user": elementary.get_first_env_var(["DBT_USER", "BUILD_USER_EMAIL", "USERNAME"]),
         "job_url": elementary.get_job_url(orchestrator, job_id),
         "job_run_url": elementary.get_job_run_url(
             orchestrator, job_id, job_run_id
@@ -171,13 +171,14 @@
 
 {% macro get_orchestrator() %}
     {% set var_value = elementary.get_var(
-        "orchestrator", ["ORCHESTRATOR", "DBT_ORCHESTRATOR"]
+        "orchestrator", ["ORCHESTRATOR", "DBT_ORCHESTRATOR", "SERVICE_ID"]
     ) %}
     {% if var_value %} {% do return(var_value) %} {% endif %}
     {% set orchestrator_env_map = {
         "airflow": ["AIRFLOW_HOME"],
         "dbt_cloud": ["DBT_CLOUD_PROJECT_ID"],
         "github_actions": ["GITHUB_ACTIONS"],
+        "jenkins": ["Jenkins"],
     } %}
     {% for orchestrator, env_vars in orchestrator_env_map.items() %}
         {% if elementary.get_first_env_var(env_vars) %}
@@ -233,7 +234,7 @@
 
 {% macro get_job_run_url(orchestrator, job_id, job_run_id) %}
     {% set var_value = elementary.get_var(
-        "job_run_url", ["JOB_RUN_URL", "DBT_JOB_RUN_URL"]
+        "job_run_url", ["JOB_RUN_URL", "DBT_JOB_RUN_URL", "BUILD_URL"]
     ) %}
     {% if var_value %} {% do return(var_value) %} {% endif %}
     {% if orchestrator == "airflow" %}

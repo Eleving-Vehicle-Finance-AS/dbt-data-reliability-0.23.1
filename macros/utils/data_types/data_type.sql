@@ -52,7 +52,7 @@
 
 {% macro fabric__edr_type_string() %} {% do return("varchar(4096)") %} {% endmacro %}
 
-{% macro vertica__edr_type_string() %} {% do return("varchar(16000)") %} {% endmacro %}
+{% macro vertica__edr_type_string() %} {% do return("varchar(4096)") %} {% endmacro %}
 
 
 {%- macro edr_type_long_string() -%}
@@ -80,7 +80,7 @@
     under the 65000 octet limit even when the function is applied twice
     (e.g. lower(lower(col)) in nested subqueries). -#}
 {%- macro vertica__edr_type_long_string() -%}
-    {% do return("varchar(32000)") %}
+    {% do return("varchar(65000)") %}
 {%- endmacro -%}
 
 {#- T-SQL: varchar(4096) is too small for compiled query text.
