@@ -182,6 +182,10 @@
        overwhelming Vertica with very large single statements.  Individual
        column values are bounded by edr_type_long_string (varchar(32000)). #}
     {% do default_config.update({"query_max_size": 250000}) %}
+    {# Vertica caps a multi-row INSERT at 32,000,000 bytes per column, sized as
+       (declared width + 8) x rows.  For varchar(65000) columns that is at most
+       492 rows per statement, so cap the row chunk below it. #}
+    {% do default_config.update({"dbt_artifacts_chunk_size": 400}) %}
     {{- return(default_config) -}}
 {%- endmacro -%}
 
